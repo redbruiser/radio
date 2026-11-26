@@ -253,17 +253,42 @@ function handleImport(e) {
 function handleCsvImport(e) {
   const f = e.target.files[0]; if (!f) return;
   const r = new FileReader();
-  // Читаем файл как UTF-8
-  r.readAsText(f, 'utf-8'); 
+  
   r.onload = ev => {
-    const rows = ev.target.result.split(/\r?\n/).filter(x => x.trim());
+    // Умное автоопределение кодировки
+    const text = ev.target.result;
+    // Если в тексте есть символы русской кодировки Windows-1251 (читаются как набор букв с точками)
+    // мы понимаем, что браузер прочитал неправильно
+    const isWin1251 = /[À-ÿ]/.test(text) && !/[А-Яа-яЁё]/.test(text);
+    
+    let rows;
+    if (isWin1251) {
+        // Если это Windows-1251, используем "запасной" план
+        // Но так как браузер уже прочитал как UTF-8, мы используем TextDecoder
+        // Чтобы не усложнять, мы просто конвертируем строку обратно
+        try {
+            const bytes = new Uint8Array(text.length);
+            for (let i = 0; i < text.length; i++) {
+                bytes[i] = text.charCodeAt(i) & 0xFF;
+            }
+            const decoder = new TextDecoder('windows-1251');
+            rows = decoder.decode(bytes).split(/\r?\n/).filter(x => x.trim());
+        } catch(e) {
+            rows = text.split(/\r?\n/).filter(x => x.trim());
+        }
+    } else {
+        rows = text.split(/\r?\n/).filter(x => x.trim());
+    }
+
     let n = 0;
     rows.forEach((row, i) => {
       const cells = parseCsvRow(row);
       if (i === 0 && /номер|box|name|назв/i.test(row) && isNaN(parseInt(cells[0]))) return;
+      
       const box = parseInt(cells[0]);
       const name = (cells[1]||'').trim();
       if (isNaN(box) || !name) return;
+      
       const qty = parseInt(cells[2]) || 0;
       const mv = cells[3] ? parseInt(cells[3]) : null;
       
@@ -273,7 +298,9 @@ function handleCsvImport(e) {
     save(); render(); closeMenu();
     alert('Импортировано: '+n+' деталей.');
   };
-  r.readAsText(f); e.target.value = '';
+  
+  // Сначала читаем как UTF-8 (вдруг это современный файл)
+  r.readAsText(f, 'utf-8'); 
 }
 function parseCsvRow(row) {
   const out = []; let cur = '', inQ = false;
