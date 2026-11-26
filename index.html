@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1a1a2e">
+<title>Радиодетали</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         background:#f0f2f5; color:#1a1a2e; padding-bottom:80px; }
+  header { position:sticky; top:0; background:#1a1a2e; color:#fff; padding:12px 16px;
+           z-index:10; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  h1 { margin:0 0 10px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
+  .menu-btn { background:none; border:none; color:#fff; font-size:22px; cursor:pointer; padding:4px 8px; }
+  input[type="search"] { width:100%; padding:10px 14px; border-radius:8px; border:none;
+                         font-size:16px; outline:none; }
+  .list { padding:12px; max-width:800px; margin:0 auto; }
+  .card { background:#fff; border-radius:12px; padding:12px 14px; margin-bottom:8px;
+          display:flex; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .box-num { background:#4f46e5; color:#fff; font-weight:bold; border-radius:8px;
+             padding:8px 10px; min-width:48px; text-align:center; font-size:15px; flex-shrink:0; }
+  .box-num.low { background:#ef4444; }
+  .info { flex:1; min-width:0; }
+  .name { font-weight:600; font-size:15px; overflow:hidden; text-overflow:ellipsis;
+          white-space:nowrap; cursor:pointer; }
+  .meta { font-size:12px; color:#888; margin-top:2px; }
+  .qty-controls { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+  .qty-btn { width:36px; height:36px; border-radius:8px; border:none; font-size:20px;
+             font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .qty-btn.minus { background:#fee2e2; color:#dc2626; }
+  .qty-btn.plus  { background:#dcfce7; color:#16a34a; }
+  .qty { font-weight:bold; font-size:16px; min-width:32px; text-align:center; }
+  .fab { position:fixed; bottom:20px; right:20px; width:56px; height:56px; border-radius:50%;
+         background:#4f46e5; color:#fff; border:none; font-size:28px; cursor:pointer;
+         box-shadow:0 4px 12px rgba(79,70,229,.5); display:flex; align-items:center; justify-content:center; }
+  .empty { text-align:center; padding:60px 20px; color:#999; }
+  .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100;
+           align-items:center; justify-content:center; padding:20px; }
+  .modal.open { display:flex; }
+  .modal-content { background:#fff; border-radius:16px; padding:20px; width:100%;
+                   max-width:400px; max-height:90vh; overflow-y:auto; }
+  .modal-content h2 { margin:0 0 16px; font-size:18px; }
+  .modal-content label { display:block; font-size:13px; color:#666; margin-bottom:4px; margin-top:12px; }
+  .modal-content input { width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px;
+                         font-size:16px; outline:none; }
+  .modal-content input:focus { border-color:#4f46e5; }
+  .modal-actions { display:flex; gap:8px; margin-top:20px; }
+  .btn { flex:1; padding:12px; border-radius:8px; border:none; font-size:15px;
+         font-weight:600; cursor:pointer; }
+  .btn-primary { background:#4f46e5; color:#fff; }
+  .btn-secondary { background:#e5e7eb; color:#333; }
+  .btn-danger { background:#fee2e2; color:#dc2626; }
+  .btn-block { width:100%; margin-top:8px; }
+  .menu-list { list-style:none; padding:0; margin:0; }
+  .menu-list li { margin-bottom:8px; }
+  .hidden { display: none !important; }
+  .error-banner { background:#ef4444; color:#fff; padding:10px; text-align:center; font-size:14px; display:none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>
+    <span>📦 Радиодетали</span>
+    <button class="menu-btn" onclick="openMenu()">☰</button>
+  </h1>
+  <div class="error-banner" id="errorBanner">
+    ⚠️ Сохранение заблокировано! Откройте файл через Chrome, а не через галерею.
+  </div>
+  <input type="search" id="search" placeholder="🔍 Поиск по названию или номеру..." autocomplete="off">
+</header>
+
+<div class="list" id="list"></div>
+<button class="fab" onclick="openAdd()">+</button>
+
+<div class="modal" id="editModal">
+  <div class="modal-content">
+    <h2 id="modalTitle">Добавить деталь</h2>
+    <label>Номер ящичка</label>
+    <input type="number" id="inpBox" inputmode="numeric" placeholder="например, 42">
+    <label>Название</label>
+    <input type="text" id="inpName" placeholder="например, Резистор 10кОм 0.25Вт">
+    <label>Количество</label>
+    <input type="number" id="inpQty" inputmode="numeric" placeholder="0">
+    <label>Мин. количество (для предупреждения)</label>
+    <input type="number" id="inpMin" inputmode="numeric" placeholder="необязательно">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeEdit()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveItem()">Сохранить</button>
+    </div>
+    <button class="btn btn-danger btn-block hidden" id="deleteBtn" onclick="deleteItem()">Удалить</button>
+  </div>
+</div>
+
+<div class="modal" id="menuModal">
+  <div class="modal-content">
+    <h2>Меню</h2>
+    <ul class="menu-list">
+      <li><button class="btn btn-secondary btn-block" onclick="exportData()">💾 Сохранить базу в файл</button></li>
+      <li><button class="btn btn-secondary btn-block" onclick="document.getElementById('importFile').click()">📂 Загрузить базу из файла (JSON)</button></li>
+      <li><button class="btn btn-secondary btn-block" onclick="document.getElementById('importCsv').click()">📊 Импорт из Excel (CSV)</button></li>
+    </ul>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeMenu()">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="importFile" accept=".json" class="hidden" onchange="handleImport(event)">
+<input type="file" id="importCsv" accept=".csv" class="hidden" onchange="handleCsvImport(event)">
+
+<script>
+const STORAGE_KEY = 'radio_parts_db_v1';
+let data = [];
+let editingId = null;
+let storageError = false;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { data = JSON.parse(raw); }
+  } catch(e) {
+    storageError = true;
+    document.getElementById('errorBanner').style.display = 'block';
+  }
+  if (!Array.isArray(data)) data = [];
+}
+
+function save() {
+  if (storageError) return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch(e) {
+    storageError = true;
+    document.getElementById('errorBanner').style.display = 'block';
+  }
+}
+
+function render(filter = '') {
+  const list = document.getElementById('list');
+  const q = filter.trim().toLowerCase();
+  let items = data;
+  if (q) items = data.filter(it =>
+    (it.name || '').toLowerCase().includes(q) || String(it.box).includes(q));
+  items = [...items].sort((a,b) => (a.box||0) - (b.box||0));
+
+  if (items.length === 0) {
+    list.innerHTML = `<div class="empty">${data.length === 0
+      ? '📭 Пока нет деталей.<br>Нажми «+» или импортируй из Excel.'
+      : '🔍 Ничего не найдено'}</div>`;
+    return;
+  }
+  list.innerHTML = items.map(it => {
+    const low = it.min != null && it.qty <= it.min;
+    return `<div class="card">
+      <div class="box-num ${low?'low':''}">${it.box}</div>
+      <div class="info">
+        <div class="name" onclick="openEdit(${it.id})">${escapeHtml(it.name)}</div>
+        <div class="meta">${low ? '⚠️ мало: мин. '+it.min : 'ящик № '+it.box}</div>
+      </div>
+      <div class="qty-controls">
+        <button class="qty-btn minus" onclick="changeQty(${it.id},-1)">−</button>
+        <span class="qty">${it.qty}</span>
+        <button class="qty-btn plus" onclick="changeQty(${it.id},1)">+</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function changeQty(id, d) {
+  const it = data.find(x => x.id === id); if (!it) return;
+  it.qty = Math.max(0, (it.qty||0) + d);
+  save(); render(document.getElementById('search').value);
+}
+
+function openAdd() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Добавить деталь';
+  ['inpBox','inpName','inpMin'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('inpQty').value = '0';
+  document.getElementById('deleteBtn').classList.add('hidden');
+  document.getElementById('editModal').classList.add('open');
+  setTimeout(() => document.getElementById('inpName').focus(), 100);
+}
+function openEdit(id) {
+  const it = data.find(x => x.id === id); if (!it) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Редактировать';
+  document.getElementById('inpBox').value = it.box;
+  document.getElementById('inpName').value = it.name;
+  document.getElementById('inpQty').value = it.qty;
+  document.getElementById('inpMin').value = it.min ?? '';
+  document.getElementById('deleteBtn').classList.remove('hidden');
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEdit() { document.getElementById('editModal').classList.remove('open'); }
+
+function saveItem() {
+  const box = parseInt(document.getElementById('inpBox').value) || 0;
+  const name = document.getElementById('inpName').value.trim();
+  const qty = parseInt(document.getElementById('inpQty').value) || 0;
+  const minRaw = document.getElementById('inpMin').value.trim();
+  const min = minRaw === '' ? null : (parseInt(minRaw) || 0);
+  if (!name) { alert('Введи название'); return; }
+  if (box <= 0) { alert('Введи номер ящичка'); return; }
+  if (editingId != null) {
+    const it = data.find(x => x.id === editingId);
+    if (it) Object.assign(it, { box, name, qty, min });
+  } else {
+    data.push({ id: Date.now() + Math.random(), box, name, qty, min });
+  }
+  save(); render(document.getElementById('search').value); closeEdit();
+}
+function deleteItem() {
+  if (!confirm('Удалить эту деталь?')) return;
+  data = data.filter(x => x.id !== editingId);
+  save(); render(document.getElementById('search').value); closeEdit();
+}
+
+function openMenu() { document.getElementById('menuModal').classList.add('open'); }
+function closeMenu() { document.getElementById('menuModal').classList.remove('open'); }
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'radio_base_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+function handleImport(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const imp = JSON.parse(ev.target.result);
+      if (!Array.isArray(imp)) throw new Error('Неверный формат');
+      if (confirm('Импортировать '+imp.length+' записей?\n\nOK = ЗАМЕНИТЬ текущие\nОтмена = ДОБАВИТЬ к текущим')) {
+        data = imp.map(it => ({ id: Date.now()+Math.random(), box: it.box, name: it.name,
+                                qty: it.qty||0, min: it.min ?? null }));
+      } else {
+        imp.forEach(it => data.push({ id: Date.now()+Math.random(), box: it.box,
+                                      name: it.name, qty: it.qty||0, min: it.min ?? null }));
+      }
+      save(); render(); alert('Готово: ' + imp.length);
+    } catch(err) { alert('Ошибка: ' + err.message); }
+  };
+  r.readAsText(f); e.target.value = '';
+}
+function handleCsvImport(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    const rows = ev.target.result.split(/\r?\n/).filter(x => x.trim());
+    let n = 0;
+    rows.forEach((row, i) => {
+      const cells = parseCsvRow(row);
+      if (i === 0 && /номер|box|name|назв/i.test(row) && isNaN(parseInt(cells[0]))) return;
+      const box = parseInt(cells[0]);
+      const name = (cells[1]||'').trim();
+      if (isNaN(box) || !name) return;
+      const qty = parseInt(cells[2]) || 0;
+      const mv = cells[3] ? parseInt(cells[3]) : null;
+      data.push({ id: Date.now()+Math.random(), box, name, qty, min: isNaN(mv) ? null : mv });
+      n++;
+    });
+    save(); render(); closeMenu();
+    alert('Импортировано: '+n+'\n\nКолонки: номер | название | количество | мин (опц.)');
+  };
+  r.readAsText(f); e.target.value = '';
+}
+function parseCsvRow(row) {
+  const out = []; let cur = '', inQ = false;
+  for (let i = 0; i < row.length; i++) {
+    const c = row[i];
+    if (c === '"') { if (inQ && row[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+    else if ((c === ',' || c === ';' || c === '\t') && !inQ) { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur); return out;
+}
+
+document.getElementById('search').addEventListener('input', e => render(e.target.value));
+document.getElementById('editModal').addEventListener('click', e => {
+  if (e.target.id === 'editModal') closeEdit(); });
+document.getElementById('menuModal').addEventListener('click', e => {
+  if (e.target.id === 'menuModal') closeMenu(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeEdit(); closeMenu(); } });
+
+load(); render();
+</script>
+</body>
+</html>
