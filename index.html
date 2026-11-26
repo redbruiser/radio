@@ -253,26 +253,22 @@ function handleImport(e) {
 function handleCsvImport(e) {
   const f = e.target.files[0]; if (!f) return;
   const r = new FileReader();
-  // ВАЖНО: читаем как Windows-1251, так как Excel на русском сохраняет именно так
-  r.readAsText(f, 'windows-1251'); 
   r.onload = ev => {
     const rows = ev.target.result.split(/\r?\n/).filter(x => x.trim());
     let n = 0;
     rows.forEach((row, i) => {
       const cells = parseCsvRow(row);
-      // Пропускаем заголовки, если они есть
       if (i === 0 && /номер|box|name|назв/i.test(row) && isNaN(parseInt(cells[0]))) return;
       const box = parseInt(cells[0]);
       const name = (cells[1]||'').trim();
       if (isNaN(box) || !name) return;
       const qty = parseInt(cells[2]) || 0;
       const mv = cells[3] ? parseInt(cells[3]) : null;
-      
       data.push({ id: Date.now()+Math.random(), box, name, qty, min: isNaN(mv) ? null : mv });
       n++;
     });
     save(); render(); closeMenu();
-    alert('Импортировано: '+n+' деталей.');
+    alert('Импортировано: '+n+'\n\nКолонки: номер | название | количество | мин (опц.)');
   };
   r.readAsText(f); e.target.value = '';
 }
