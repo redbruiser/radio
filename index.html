@@ -253,6 +253,8 @@ function handleImport(e) {
 function handleCsvImport(e) {
   const f = e.target.files[0]; if (!f) return;
   const r = new FileReader();
+  // Читаем файл как UTF-8
+  r.readAsText(f, 'utf-8'); 
   r.onload = ev => {
     const rows = ev.target.result.split(/\r?\n/).filter(x => x.trim());
     let n = 0;
@@ -264,11 +266,12 @@ function handleCsvImport(e) {
       if (isNaN(box) || !name) return;
       const qty = parseInt(cells[2]) || 0;
       const mv = cells[3] ? parseInt(cells[3]) : null;
+      
       data.push({ id: Date.now()+Math.random(), box, name, qty, min: isNaN(mv) ? null : mv });
       n++;
     });
     save(); render(); closeMenu();
-    alert('Импортировано: '+n+'\n\nКолонки: номер | название | количество | мин (опц.)');
+    alert('Импортировано: '+n+' деталей.');
   };
   r.readAsText(f); e.target.value = '';
 }
