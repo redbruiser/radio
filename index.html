@@ -240,33 +240,20 @@ function handleImport(e) {
     try {
       let text = ev.target.result;
       
-      // МАГИЯ: Восстанавливаем русские буквы, если они превратились в ромбики или кракозябры
-      if (text.includes('\\ufffd') || text.includes('Ђ') || text.includes('р')) {
-         try {
-            // Конвертируем испорченную строку обратно в Windows-1251
-            const bytes = new Uint8Array(text.length);
-            for (let i = 0; i < text.length; i++) {
-                bytes[i] = text.charCodeAt(i) & 0xFF;
-            }
-            text = new TextDecoder('windows-1251').decode(bytes);
-         } catch(err) {}
-      }
+      // 1. Убираем BOM (невидимый маркер в начале файла)
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      
+      // 2. Убираем все невидимые управляющие символы, которые ломают JSON
+      text = text.replace(/[\x00-\x1F\x7F]/g, "");
+      
+      // 3. Убираем возможные кавычки-ёлочки, если они вдруг попали в JSON
+      text = text.trim();
 
       const imp = JSON.parse(text);
       if (!Array.isArray(imp)) throw new Error('Неверный формат');
 
-      // Исправляем названия внутри массива
       const fixedImp = imp.map(it => {
-          let name = it.name || '';
-          // Если в названии есть символы-заменители, пробуем спасти
-          if (name.includes('\ufffd')) {
-              try {
-                  const b = new Uint8Array(name.length);
-                  for(let i=0; i<name.length; i++) b[i] = name.charCodeAt(i) & 0xFF;
-                  name = new TextDecoder('windows-1251').decode(b);
-              } catch(err) {}
-          }
-          return { id: Date.now()+Math.random(), box: it.box, name: name, qty: it.qty||0, min: it.min ?? null };
+          return { id: Date.now()+Math.random(), box: it.box, name: it.name || '', qty: it.qty||0, min: it.min ?? null };
       });
 
       if (confirm('Импортировать '+fixedImp.length+' записей?\n\nOK = ЗАМЕНИТЬ текущие\nОтмена = ДОБАВИТЬ к текущим')) {
@@ -274,8 +261,10 @@ function handleImport(e) {
       } else {
         data = data.concat(fixedImp);
       }
-      save(); render(); alert('Готово: ' + fixedImp.length);
-    } catch(err) { alert('Ошибка: ' + err.message); }
+      save(); render(); alert('Готово! Импортировано: ' + fixedImp.length);
+    } catch(err) { 
+      alert('Ошибка: ' + err.message); 
+    }
   };
   r.readAsText(f); e.target.value = '';
 }
